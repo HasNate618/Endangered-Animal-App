@@ -1,10 +1,13 @@
 package com.nathanespejo.safeguardwildlife
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.location.Location
 import android.media.ExifInterface
 import android.os.Bundle
 import android.os.Environment
@@ -16,7 +19,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.nathanespejo.safeguardwildlife.API.DatabaseAPI
+import com.nathanespejo.safeguardwildlife.Model.Animal
 import com.nathanespejo.safeguardwildlife.ml.Model
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -30,9 +38,10 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-
 private const val FILE_NAME = "photo.jpg"
 class SubmissionActivity : AppCompatActivity() {
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     lateinit var selectBtn: Button
     lateinit var photoBtn: Button
@@ -46,10 +55,16 @@ class SubmissionActivity : AppCompatActivity() {
     lateinit var labels: List<String>
     lateinit var photoFile: File
 
+    lateinit var animal: String
+    lateinit var date: String
+    lateinit var location: String
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         setContentView(R.layout.activity_submission)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         selectBtn = findViewById(R.id.selectBtn)
         photoBtn = findViewById(R.id.photoBtn)
@@ -89,9 +104,16 @@ class SubmissionActivity : AppCompatActivity() {
         }
         submitBtn.setOnClickListener{
             val intent = Intent(this, MapActivity::class.java).also {
-                it.putExtra("ANIMAL", "C")
-                it.putExtra("DATE", "a")
-                it.putExtra("LOCATION", "d")
+                //Add new animal to database
+                if (this::animal.isInitialized){
+                    val objSend = DatabaseAPI.Send()
+                    val newAnimal = Animal(animal, date, location)
+                    objSend.start(newAnimal)
+                    Log.d("LOGS", "Animal added: " + newAnimal.toString())
+                } else {
+                    Log.d("LOGS", "No animal found")
+                }
+
                 startActivity(it)
             }
         }
@@ -173,6 +195,7 @@ class SubmissionActivity : AppCompatActivity() {
 
         val text = "Animal: " + labels[maxIdx]
         predictionText.setText(text)
+        animal = labels[maxIdx]
 
         // Releases model resources if no longer used.
         model.close()
@@ -187,22 +210,21 @@ class SubmissionActivity : AppCompatActivity() {
         if (exif.dateTime.toInt() == -1){
             val dtf = DateTimeFormatter.ofPattern("dd/MM/yyy")
             text = "Date: " + dtf.format(LocalDateTime.now())
+            date = dtf.format(LocalDateTime.now())
         } else {
             val sdf = SimpleDateFormat("dd/MM/yyyy")
-            val stamp = Timestamp(exif.dateTimeOriginal)
-            val date = Date(stamp.time)
-            text = "Date: " + sdf.format(date)
+            val stamp = Date(Timestamp(exif.dateTimeOriginal).time)
+            text = "Date: " + sdf.format(stamp)
+            date = sdf.format(stamp)
         }
         dateText.setText(text)
     }
 
     fun getLocation(){
-        val exif = ExifInterface(photoFile.absoluteFile.toString())
-        val latLong: FloatArray = floatArrayOf(0f, 0f)
-        //exif.getLatLong(latLong)
-        //Log.d("LOGS", exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE).toString())
-        //Log.d("LOGS", exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE).toString())
-        val text = "Location: " //+ getCompleteAddressString(latLong[0].toDouble(), latLong[1].toDouble())
+        //Stores lat and long in location var
+        val latLong = getLastKnownLocation()
+        location = latLong[0].toString() + "," + latLong[1].toString()
+        val text = "Location: $location"
         locationText.setText(text)
     }
 
@@ -228,6 +250,27 @@ class SubmissionActivity : AppCompatActivity() {
         }
         return strAdd
     }*/
+
+    fun getLastKnownLocation():DoubleArray {
+        val latLong = doubleArrayOf(0.00, 0.00)
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        {
+            val permissions = arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            requestPermissions(permissions, 1)
+            return latLong
+        }
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { loc: Location?->
+                latLong[0] = loc?.latitude!!
+                latLong[1] = loc?.longitude!!
+            }
+        return latLong
+    }
 
     override fun onDestroy() {
         super.onDestroy()
