@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import android.media.ExifInterface
 import android.os.Bundle
@@ -37,6 +39,7 @@ import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.math.roundToInt
 
 private const val FILE_NAME = "photo.jpg"
 class SubmissionActivity : AppCompatActivity() {
@@ -57,7 +60,7 @@ class SubmissionActivity : AppCompatActivity() {
 
     lateinit var animal: String
     lateinit var date: String
-    lateinit var location: String
+    var location = "0.00,0.00"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,10 +111,12 @@ class SubmissionActivity : AppCompatActivity() {
                 if (this::animal.isInitialized){
                     val objSend = DatabaseAPI.Send()
                     val newAnimal = Animal(animal, date, location)
+                    it.putExtra("Submission", newAnimal)
                     objSend.start(newAnimal)
                     Log.d("LOGS", "Animal added: " + newAnimal.toString())
                 } else {
                     Log.d("LOGS", "No animal found")
+                    it.putExtra("Submission", Animal("null", "", ""))
                 }
 
                 startActivity(it)
@@ -149,7 +154,7 @@ class SubmissionActivity : AppCompatActivity() {
         setImageView()
         predictImage()
         getCreationDate()
-        getLocation()
+        getLastKnownLocation()
     }
 
     fun setImageView(){
@@ -220,15 +225,14 @@ class SubmissionActivity : AppCompatActivity() {
         dateText.setText(text)
     }
 
-    fun getLocation(){
+    private fun setLocation(){
         //Stores lat and long in location var
-        val latLong = getLastKnownLocation()
-        location = latLong[0].toString() + "," + latLong[1].toString()
         val text = "Location: $location"
         locationText.setText(text)
     }
 
-    /*private fun getCompleteAddressString(LATITUDE: Double, LONGITUDE: Double): String? {
+
+    private fun getCompleteAddressString(LATITUDE: Double, LONGITUDE: Double): String? {
         var strAdd = ""
         val geocoder = Geocoder(this, Locale.getDefault())
         try {
@@ -249,10 +253,9 @@ class SubmissionActivity : AppCompatActivity() {
             Log.w("My Current loction address", "Canont get Address!")
         }
         return strAdd
-    }*/
+    }
 
-    fun getLastKnownLocation():DoubleArray {
-        val latLong = doubleArrayOf(0.00, 0.00)
+    fun getLastKnownLocation() {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
@@ -262,14 +265,20 @@ class SubmissionActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
             requestPermissions(permissions, 1)
-            return latLong
         }
+
         fusedLocationClient.lastLocation
             .addOnSuccessListener { loc: Location?->
-                latLong[0] = loc?.latitude!!
-                latLong[1] = loc?.longitude!!
+                location = round(loc?.latitude!!).toString() + "," + round(loc?.longitude!!).toString()
+                val text = "Location: $location"
+                locationText.setText(text)
+
+                Log.d("LOGS", getCompleteAddressString(loc.latitude, loc.longitude).toString())
             }
-        return latLong
+    }
+
+    private fun round(n: Double):Double {
+        return (n * 100.0).roundToInt() / 100.0
     }
 
     override fun onDestroy() {
