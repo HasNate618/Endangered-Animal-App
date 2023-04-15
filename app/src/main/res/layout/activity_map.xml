@@ -6,17 +6,24 @@
     android:layout_height="match_parent"
     tools:context=".MapActivity">
 
-    <com.mancj.materialsearchbar.MaterialSearchBar
-        android:id="@+id/search_bar"
-        android:layout_width="match_parent"
-        android:layout_height="50dp" >
-    </com.mancj.materialsearchbar.MaterialSearchBar>
-
-    <fragment
+    <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="50dp"/>
+        tools:layout="@layout/support_simple_spinner_dropdown_item"
+        />
+
+    <com.mancj.materialsearchbar.MaterialSearchBar
+        android:id="@+id/searchBar"
+        android:layout_width="match_parent"
+        android:paddingHorizontal="10dp"
+        android:layout_height="50dp"
+        android:layout_marginTop="10dp"
+        app:mt_hint="Search for animals"
+        app:mt_hintColor="#303030"
+        app:mt_placeholder=" Search for animals"
+        app:mt_placeholderColor="#303030"
+        app:mt_roundedSearchBarEnabled="true" />
 
 </RelativeLayout>

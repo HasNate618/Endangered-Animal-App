@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">Safeguard Wildlife</string>
+    <string name="app_name">Animarker</string>
     <string name="animal">Animal:</string>
+    <string name="title_activity_maps">MapsActivity</string>
 </resources>

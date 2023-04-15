@@ -1,11 +1,13 @@
 package com.nathanespejo.safeguardwildlife
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -15,6 +17,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.mancj.materialsearchbar.MaterialSearchBar
+import com.mancj.materialsearchbar.MaterialSearchBar.BUTTON_BACK
 import com.nathanespejo.safeguardwildlife.API.DatabaseAPI
 import com.nathanespejo.safeguardwildlife.Model.Animal
 
@@ -23,15 +26,18 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
     lateinit var mMap: GoogleMap
     lateinit var search_bar: MaterialSearchBar
     lateinit var submission: Animal
+    val mapZoom = 4f
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
+
         submission = intent.getSerializableExtra("Submission") as Animal
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-        search_bar = findViewById(R.id.search_bar)
+
+        search_bar = findViewById(R.id.searchBar)
         search_bar.setCardViewElevation(10)
         search_bar.setOnSearchActionListener(object:MaterialSearchBar.OnSearchActionListener {
             override fun onSearchStateChanged(enabled: Boolean) {
@@ -57,7 +63,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
             var lastLocation = LatLng(0.00,0.00)
 
             for (animal in animalsList) {
-                //Log.d("LOGS", animalsList.indexOf(animal).toString() + ": " + animal.toString())
                 val latLong = animal.location?.split(",")?.toTypedArray()
                 val location = LatLng(latLong?.get(0)?.toDouble()!!, latLong?.get(1)?.toDouble()!!)
                 lastLocation = location
@@ -66,7 +71,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
 
                 mMap.addMarker(MarkerOptions().position(location).title(animalName + " " + date))
             }
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(lastLocation))
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLocation, mapZoom))
         }
     }
 
@@ -80,9 +85,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback {
             val date = submission.date
 
             mMap.addMarker(MarkerOptions().position(location).title(animalName + " " + date))
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(location))
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, mapZoom))
         }
     }
 
-
+    override fun onBackPressed() {
+        val intent = Intent(this, SubmissionActivity::class.java).also {
+            startActivity(it)
+        }
+    }
 }

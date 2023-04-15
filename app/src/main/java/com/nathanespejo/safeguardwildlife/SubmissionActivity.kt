@@ -49,6 +49,7 @@ class SubmissionActivity : AppCompatActivity() {
     lateinit var selectBtn: Button
     lateinit var photoBtn: Button
     lateinit var submitBtn: Button
+    lateinit var uploadText: TextView
     lateinit var predictionText: TextView
     lateinit var dateText: TextView
     lateinit var locationText: TextView
@@ -64,7 +65,7 @@ class SubmissionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         setContentView(R.layout.activity_submission)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -72,6 +73,7 @@ class SubmissionActivity : AppCompatActivity() {
         selectBtn = findViewById(R.id.selectBtn)
         photoBtn = findViewById(R.id.photoBtn)
         submitBtn = findViewById(R.id.submitBtn)
+        uploadText = findViewById(R.id.uploadText)
         predictionText = findViewById(R.id.predictionText)
         dateText = findViewById(R.id.dateText)
         locationText = findViewById(R.id.locationText)
@@ -120,6 +122,8 @@ class SubmissionActivity : AppCompatActivity() {
                 }
 
                 startActivity(it)
+                deleteRecursive(File("data/user/0/com.nathanespejo.safeguardwildlife/files/"))
+                finish()
             }
         }
     }
@@ -141,7 +145,7 @@ class SubmissionActivity : AppCompatActivity() {
         }
 
         if(requestCode == 1){
-            val uri = data?.data;
+            val uri = data?.data ?: return
             val photoPath = FileUtils.getMediaFilePathForN(uri, applicationContext)
             Log.d("LOGS", photoPath.toString());
             photoFile = File(photoPath.toString())
@@ -155,9 +159,11 @@ class SubmissionActivity : AppCompatActivity() {
         predictImage()
         getCreationDate()
         getLastKnownLocation()
+        submitBtn.setText("Submit To Map")
     }
 
     fun setImageView(){
+        uploadText.visibility = TextView.GONE
         if (photoFile.exists()){
             val exif = ExifInterface(photoFile.absoluteFile.toString())
             val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
@@ -225,26 +231,15 @@ class SubmissionActivity : AppCompatActivity() {
         dateText.setText(text)
     }
 
-    private fun setLocation(){
-        //Stores lat and long in location var
-        val text = "Location: $location"
-        locationText.setText(text)
-    }
-
-
-    private fun getCompleteAddressString(LATITUDE: Double, LONGITUDE: Double): String? {
-        var strAdd = ""
+    private fun getLocalityString(LATITUDE: Double, LONGITUDE: Double): String? {
+        var locality = ""
         val geocoder = Geocoder(this, Locale.getDefault())
         try {
             val addresses: List<Address>? = geocoder.getFromLocation(LATITUDE, LONGITUDE, 1)
             if (addresses != null) {
                 val returnedAddress: Address = addresses[0]
-                val strReturnedAddress = StringBuilder("")
-                for (i in 0..returnedAddress.getMaxAddressLineIndex()) {
-                    strReturnedAddress.append(returnedAddress.getAddressLine(i)).append("\n")
-                }
-                strAdd = strReturnedAddress.toString()
-                Log.w("My Current loction address", strReturnedAddress.toString())
+                locality = returnedAddress.locality
+                Log.w("My Current loction address", locality)
             } else {
                 Log.w("My Current loction address", "No Address returned!")
             }
@@ -252,7 +247,7 @@ class SubmissionActivity : AppCompatActivity() {
             e.printStackTrace()
             Log.w("My Current loction address", "Canont get Address!")
         }
-        return strAdd
+        return locality
     }
 
     fun getLastKnownLocation() {
@@ -270,10 +265,8 @@ class SubmissionActivity : AppCompatActivity() {
         fusedLocationClient.lastLocation
             .addOnSuccessListener { loc: Location?->
                 location = round(loc?.latitude!!).toString() + "," + round(loc?.longitude!!).toString()
-                val text = "Location: $location"
+                val text = "Location: " + getLocalityString(loc.latitude, loc.longitude).toString()
                 locationText.setText(text)
-
-                Log.d("LOGS", getCompleteAddressString(loc.latitude, loc.longitude).toString())
             }
     }
 
@@ -290,6 +283,10 @@ class SubmissionActivity : AppCompatActivity() {
         if (fileOrDirectory.isDirectory) for (child in fileOrDirectory.listFiles()) deleteRecursive(
             child
         )
-        fileOrDirectory.delete()
+        //fileOrDirectory.delete()
+    }
+
+    override fun onBackPressed() {
+        recreate()
     }
 }
